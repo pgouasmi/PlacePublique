@@ -1,18 +1,31 @@
+import os
+import hashlib
+import base64
+import secrets
 import tweepy
-from django.conf import settings
-from .models import Response, Question
+from django.shortcuts import redirect
+from django.http import HttpResponse
 import logging
 
-class TwitterService:
-    def __init__(self):
-        self.client = tweepy.Client(
-            consumer_key=settings.TWITTER_API_KEY,
-            consumer_secret=settings.TWITTER_API_SECRET,
-            access_token=settings.TWITTER_ACCESS_TOKEN,
-            access_token_secret=settings.TWITTER_ACCESS_TOKEN_SECRET
-        )
-        
-        logging.info(f"API_KEY: {self.client.consumer_key}\nSECRET_KEY: {self.client.consumer_secret}\nACCESS_TOKEN: {self.client.access_token}\nACCESS_TOKEN_SECRET: {self.client.access_token_secret}")
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
-    def get_dms(self):
-        return self.client.get_direct_message_events()
+class TwitterService:
+   def __init__(self):
+       self.code_challenge = secrets.token_urlsafe(64)
+       self.oauth2_user_handler = tweepy.OAuth2UserHandler(
+           client_id=os.getenv('CLIENT_ID'),
+           redirect_uri="http://127.0.0.1:8000/twitter/callback",
+           scope=["dm.read"],
+           client_secret=os.getenv('CLIENT_SECRET'),
+        #    code_challenge=self.code_challenge,
+        #    code_challenge_method="plain"
+       )
+
+   def get_auth_url(self):
+       return self.oauth2_user_handler.get_authorization_url()
+
+   def get_access_token(self, auth_response):
+       return self.oauth2_user_handler.fetch_token(
+           auth_response,
+        #    code_verifier=self.code_challenge
+       )
